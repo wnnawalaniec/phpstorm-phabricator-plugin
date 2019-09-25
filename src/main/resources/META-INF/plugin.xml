@@ -1,24 +1,21 @@
 <idea-plugin>
     <id>wn.phabricator-plugin</id>
-    <name>Plugin display name here</name>
-    <vendor email="support@yourcompany.com" url="http://www.yourcompany.com">YourCompany</vendor>
+    <name>Phabricator Utils</name>
+    <vendor email="wnnawalaniec@gmail.com">Wojciech Nawalaniec</vendor>
 
     <description><![CDATA[
-    Enter short description for your plugin here.<br>
-    <em>most HTML tags may be used</em>
+    Simple widget for working with Phabricator.
     ]]></description>
 
-    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
-         on how to target different products -->
-    <!-- uncomment to enable plugin in all products
-    <depends>com.intellij.modules.lang</depends>
-    -->
-
     <extensions defaultExtensionNs="com.intellij">
-        <!-- Add your extensions here -->
     </extensions>
 
     <actions>
-        <!-- Add your actions here -->
+        <action id="PhabricatorPlugin.CopySnippet"
+                class="wn.actions.CopyAction"
+                text="Copy Snippet"
+                description="Copy selected code to clipboard and format it to Phabricator code snippet format.">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+        </action>
     </actions>
 </idea-plugin>
