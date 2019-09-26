@@ -1,5 +1,6 @@
 package wn.phabricator.codeSnippet.formatter;
 
+import org.bouncycastle.util.Strings;
 import org.jetbrains.annotations.NotNull;
 import wn.phabricator.CodeSnippet;
 
@@ -23,7 +24,7 @@ public abstract class Base {
     }
 
     private String languageAndFileInfo(@NotNull CodeSnippet snippet) {
-        return String.format("lang=%s, name=%s", snippet.getLang(), snippet.getPath());
+        return String.format("lang=%s, name=%s", snippet.getLang().toLowerCase(), snippet.getPath());
     }
 
     protected abstract String formatCode(CodeSnippet snippet);

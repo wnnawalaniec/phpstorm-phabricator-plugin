@@ -10,6 +10,9 @@
     <extensions defaultExtensionNs="com.intellij">
     </extensions>
 
+    <depends>com.jetbrains.php</depends>
+    <depends>com.intellij.modules.platform</depends>
+
     <actions>
         <action id="PhabricatorPlugin.CopySnippet"
                 class="wn.actions.CopyAction"
