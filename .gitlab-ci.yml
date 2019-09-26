@@ -23,8 +23,8 @@ build:
     paths:
       - build
       - .gradle
-    onyl:
-      - tags
+  only:
+    - tags
 
 test:
   stage: test
