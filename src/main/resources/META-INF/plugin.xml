@@ -8,10 +8,14 @@
     ]]></description>
 
     <extensions defaultExtensionNs="com.intellij">
+        <projectConfigurable instance="com.intellij.tasks.config.TaskConfigurable" id="tasks" displayName="Tasks" nonDefaultProject="true">
+            <configurable instance="com.intellij.tasks.config.TaskRepositoriesConfigurable" displayName="Servers" id="tasks.servers"/>
+        </projectConfigurable>
+        <tasks.repositoryType implementation="wn.phabricator.task.RepositoryType"/>
     </extensions>
 
-    <depends>com.jetbrains.php</depends>
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.tasks</depends>
 
     <actions>
         <action id="PhabricatorPlugin.CopySnippet"
