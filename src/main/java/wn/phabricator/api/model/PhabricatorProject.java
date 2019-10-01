@@ -5,11 +5,12 @@ import com.intellij.util.xmlb.annotations.Tag;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 @SuppressWarnings("unused")
 @Tag("PhabricatorProject")
-public class Project {
+public class PhabricatorProject {
     private int id;
     private String phid;
     private Fields fields = new Fields();
@@ -61,7 +62,7 @@ public class Project {
         fields.description = description;
     }
 
-    public List<String> validate()
+    public Collection<? extends String> validate()
     {
         List<String> errors = new ArrayList<>();
         if (id < 1) {
@@ -90,8 +91,8 @@ public class Project {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof Project)) return false;
-        return id == ((Project) o).id;
+        if (!(o instanceof PhabricatorProject)) return false;
+        return id == ((PhabricatorProject) o).id;
     }
 
     @Override
@@ -104,7 +105,7 @@ public class Project {
         return getName();
     }
 
-    public static class Fields {
+    private static class Fields {
         private String name;
         private String description;
     }

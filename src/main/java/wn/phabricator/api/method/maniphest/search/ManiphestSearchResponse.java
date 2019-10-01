@@ -1,15 +1,15 @@
-package wn.phabricator.api.method.project.seach;
+package wn.phabricator.api.method.maniphest.search;
 
 import org.jetbrains.annotations.NotNull;
 import wn.phabricator.api.Response;
 import wn.phabricator.api.model.PhabricatorCursor;
-import wn.phabricator.api.model.PhabricatorProject;
+import wn.phabricator.api.model.PhabricatorIssue;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class ProjectSearchResponse extends Response {
+public class ManiphestSearchResponse extends Response {
     private Result result;
 
     @NotNull
@@ -29,23 +29,23 @@ public class ProjectSearchResponse extends Response {
         }
 
         List<String> errors = new ArrayList<>();
-        for (PhabricatorProject phabricatorProject : result.data) {
-            errors.addAll(phabricatorProject.validate());
+        for (PhabricatorIssue task : result.data) {
+            errors.addAll(task.validate());
         }
 
         return errors;
     }
 
     public static class Result {
-        private List<PhabricatorProject> data;
-        private PhabricatorCursor cursor;
+        private List<PhabricatorIssue> data;
+        private PhabricatorCursor phabricatorCursor;
 
-        public List<PhabricatorProject> getData() {
+        public List<PhabricatorIssue> getData() {
             return data;
         }
 
-        public PhabricatorCursor getCursor() {
-            return cursor;
+        public PhabricatorCursor getPhabricatorCursor() {
+            return phabricatorCursor;
         }
     }
 }

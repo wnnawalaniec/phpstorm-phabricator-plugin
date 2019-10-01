@@ -7,21 +7,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 @SuppressWarnings("unused")
-public class Cursor {
+public class PhabricatorCursor {
     private Integer limit;
     private Order order;
     private String before;
     private String after;
 
-    public Cursor() {
+    public PhabricatorCursor() {
     }
 
-    public Cursor(Integer limit) {
+    public PhabricatorCursor(Integer limit) {
         assert limit == null || limit <= 100;
         this.limit = limit;
     }
 
-    public Cursor(Integer limit, Order order, @Nullable String before, @Nullable String after) {
+    public PhabricatorCursor(Integer limit, Order order, @Nullable String before, @Nullable String after) {
         assert limit == null || limit <= 100;
         this.limit = limit;
         this.order = order;
@@ -39,11 +39,11 @@ public class Cursor {
         }
 
         if (after != null) {
-            params.add(new Pair<>("after", String.valueOf(after)));
+            params.add(new Pair<>("after", after));
         }
 
         if (before != null) {
-            params.add(new Pair<>("before", String.valueOf(before)));
+            params.add(new Pair<>("before", before));
         }
 
         return params;

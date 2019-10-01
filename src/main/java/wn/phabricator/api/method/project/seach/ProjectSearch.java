@@ -3,7 +3,7 @@ package wn.phabricator.api.method.project.seach;
 import javafx.util.Pair;
 import org.jetbrains.annotations.Nullable;
 import wn.phabricator.api.method.BaseMethod;
-import wn.phabricator.api.model.Cursor;
+import wn.phabricator.api.model.PhabricatorCursor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +15,7 @@ public class ProjectSearch extends BaseMethod {
         super(name, params);
     }
 
-    static public ProjectSearch AllActiveProjects(@Nullable Cursor pagination) {
+    static public ProjectSearch AllActiveProjects(@Nullable PhabricatorCursor pagination) {
         ArrayList<Pair<String, String>> params = new ArrayList<>();
         if (pagination != null) {
             params.addAll(pagination.asParams());
