@@ -8,6 +8,7 @@ import com.intellij.tasks.TaskRepositoryType;
 import com.intellij.tasks.impl.gson.TaskGsonUtil;
 import com.intellij.tasks.impl.httpclient.NewBaseRepositoryImpl;
 import com.intellij.tasks.impl.httpclient.TaskResponseUtil;
+import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -22,7 +23,7 @@ import wn.phabricator.api.Response;
 import wn.phabricator.api.method.maniphest.search.ManiphestSearch;
 import wn.phabricator.api.method.project.seach.ProjectSearch;
 import wn.phabricator.api.method.project.seach.ProjectSearchResponse;
-import wn.phabricator.api.model.Project;
+import wn.phabricator.api.model.PhabricatorProject;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -32,11 +33,12 @@ import java.util.stream.Collectors;
 
 @Tag("Phabricator")
 public class Repository extends NewBaseRepositoryImpl {
-    public static final String REST_API_PATH_PREFIX = "/api/";
-    public static final Gson GSON = TaskGsonUtil.createDefaultBuilder().create();
+    private static final String REST_API_PATH_PREFIX = "/api/";
+    private static final Gson GSON = TaskGsonUtil.createDefaultBuilder().create();
 
-    private Project currentProject;
-    private List<Project> projects = new ArrayList<>();
+    private Boolean onlyAssigned;
+    private PhabricatorProject currentPhabricatorProject;
+    private List<PhabricatorProject> phabricatorProjects = new ArrayList<>();
 
     /**
      * Serialization constructor
@@ -55,16 +57,22 @@ public class Repository extends NewBaseRepositoryImpl {
     /**
      * Cloning constructor
      */
-    public Repository(Repository other) {
+    private Repository(Repository other) {
         super(other);
-        this.currentProject = other.currentProject;
+        this.currentPhabricatorProject = other.currentPhabricatorProject;
+        this.onlyAssigned = other.onlyAssigned;
     }
 
     @Nullable
     @Override
-    public Task findTask(@NotNull String id) throws Exception {
+    public Task findTask(@NotNull String id) {
         Method method = ManiphestSearch.ByTaskId(id);
         return null;
+    }
+
+    @Override
+    public Task[] getIssues(@Nullable String query, int offset, int limit, boolean withClosed) throws Exception {
+        return new Task[]{};
     }
 
     @Nullable
@@ -95,29 +103,38 @@ public class Repository extends NewBaseRepositoryImpl {
     public boolean equals(Object o) {
         if (!super.equals(o)) return false;
         Repository repository = (Repository) o;
-        if (!Comparing.equal(currentProject, repository.currentProject)) return false;
-        return true;
+        return Comparing.equal(currentPhabricatorProject, repository.currentPhabricatorProject);
     }
 
     @Nullable
-    public Project getCurrentProject() {
-        return currentProject;
+    public PhabricatorProject getCurrentPhabricatorProject() {
+        return currentPhabricatorProject;
     }
 
-    public void setCurrentProject(@Nullable Project currentProject) {
-        this.currentProject = currentProject;
+    public void setCurrentPhabricatorProject(@Nullable PhabricatorProject currentPhabricatorProject) {
+        this.currentPhabricatorProject = currentPhabricatorProject;
     }
 
-    public List<Project> fetchProjects() throws IOException {
+    @Attribute("onlyAssigned")
+    @Nullable
+    public Boolean getOnlyAssigned() {
+        return onlyAssigned;
+    }
+
+    public void setOnlyAssigned(@Nullable Boolean onlyAssigned) {
+        this.onlyAssigned = onlyAssigned;
+    }
+
+    public List<PhabricatorProject> fetchProjects() throws IOException {
         ProjectSearchResponse response = callPhabricator(ProjectSearch.AllActiveProjects(null), ProjectSearchResponse.class);
-        projects.addAll(response.getResult().getData());
+        phabricatorProjects.addAll(response.getResult().getData());
 
         while (response.getResult().getCursor().hasNextPage()) {
             response = callPhabricator(ProjectSearch.AllActiveProjects(response.getResult().getCursor()), ProjectSearchResponse.class);
-            projects.addAll(response.getResult().getData());
+            phabricatorProjects.addAll(response.getResult().getData());
         }
 
-        return projects;
+        return phabricatorProjects;
     }
 
     private <T extends Response> T callPhabricator(@NotNull Method method, Class<T> responseClass) throws IOException {
@@ -126,6 +143,7 @@ public class Repository extends NewBaseRepositoryImpl {
         return deserialize(response, responseClass);
     }
 
+    @NotNull
     private HttpPost methodToRequest(@NotNull Method method) {
         HttpPost post = new HttpPost(getRestApiUrl(method.name()));
 

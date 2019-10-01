@@ -7,18 +7,21 @@ import com.intellij.tasks.config.BaseRepositoryEditor;
 import com.intellij.tasks.impl.TaskUiUtil;
 import com.intellij.ui.SimpleListCellRenderer;
 import com.intellij.ui.components.JBLabel;
+import com.intellij.ui.components.JBRadioButton;
 import com.intellij.util.Consumer;
 import com.intellij.util.ui.FormBuilder;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import wn.phabricator.api.model.PhabricatorProject;
 
 import javax.swing.*;
 import java.util.List;
 
 public class RepositoryEditor extends BaseRepositoryEditor<Repository> {
     private JBLabel myProjectLabel;
-    private ComboBox<wn.phabricator.api.model.Project> myProjectComboBox;
+    private ComboBox<PhabricatorProject> myProjectComboBox;
+    private JBRadioButton myOnlyAssignedToMeButton;
 
     public RepositoryEditor(Project project, Repository repository, Consumer<Repository> changeListener) {
         super(project, repository, changeListener);
@@ -35,8 +38,12 @@ public class RepositoryEditor extends BaseRepositoryEditor<Repository> {
     }
 
     private void initialize() {
-        wn.phabricator.api.model.Project currentProject = myRepository.getCurrentProject();
-        if (currentProject != null && myRepository.isConfigured()) {
+        if (myRepository.getOnlyAssigned() != null) {
+            myOnlyAssignedToMeButton.setSelected(myRepository.getOnlyAssigned());
+        }
+
+        PhabricatorProject currentPhabricatorProject = myRepository.getCurrentPhabricatorProject();
+        if (currentPhabricatorProject != null && myRepository.isConfigured()) {
             new FetchProjectsTask().queue();
         }
     }
@@ -57,34 +64,39 @@ public class RepositoryEditor extends BaseRepositoryEditor<Repository> {
     @Override
     public void apply() {
         super.apply();
-        myRepository.setCurrentProject((wn.phabricator.api.model.Project) myProjectComboBox.getSelectedItem());
+        myRepository.setCurrentPhabricatorProject((PhabricatorProject) myProjectComboBox.getSelectedItem());
+        myRepository.setOnlyAssigned(myOnlyAssignedToMeButton.isSelected());
         myTestButton.setEnabled(myRepository.isConfigured());
     }
 
     @Nullable
     @Override
     protected JComponent createCustomPanel() {
+        myOnlyAssignedToMeButton = new JBRadioButton("Only tasks already assigned to me.", true);
         myProjectLabel = new JBLabel("Project:", SwingConstants.RIGHT);
-        myProjectComboBox = new ComboBox<wn.phabricator.api.model.Project>(300);
+        myProjectComboBox = new ComboBox<>(300);
         myProjectComboBox.setRenderer(SimpleListCellRenderer.create("Enter url and token first.", Object::toString));
         myProjectLabel.setLabelFor(myProjectComboBox);
-        return new FormBuilder().addLabeledComponent(myProjectLabel, myProjectComboBox).getPanel();
+        return new FormBuilder()
+                .addLabeledComponent(myProjectLabel, myProjectComboBox)
+                .addComponentToRightColumn(myOnlyAssignedToMeButton)
+                .getPanel();
     }
 
-    private class FetchProjectsTask extends TaskUiUtil.ComboBoxUpdater<wn.phabricator.api.model.Project> {
+    private class FetchProjectsTask extends TaskUiUtil.ComboBoxUpdater<PhabricatorProject> {
         private FetchProjectsTask() {
             super(RepositoryEditor.this.myProject, "Downloading Phabricator projects...", myProjectComboBox);
         }
 
         @Nullable
         @Override
-        public wn.phabricator.api.model.Project getSelectedItem() {
-            return myRepository.getCurrentProject();
+        public PhabricatorProject getSelectedItem() {
+            return myRepository.getCurrentPhabricatorProject();
         }
 
         @NotNull
         @Override
-        protected List<wn.phabricator.api.model.Project> fetch(@NotNull ProgressIndicator indicator) throws Exception {
+        protected List<PhabricatorProject> fetch(@NotNull ProgressIndicator indicator) throws Exception {
             return myRepository.fetchProjects();
         }
     }
