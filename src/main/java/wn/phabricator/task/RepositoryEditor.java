@@ -6,6 +6,7 @@ import com.intellij.openapi.ui.ComboBox;
 import com.intellij.tasks.config.BaseRepositoryEditor;
 import com.intellij.tasks.impl.TaskUiUtil;
 import com.intellij.ui.SimpleListCellRenderer;
+import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBRadioButton;
 import com.intellij.util.Consumer;
@@ -21,7 +22,7 @@ import java.util.List;
 public class RepositoryEditor extends BaseRepositoryEditor<Repository> {
     private JBLabel myProjectLabel;
     private ComboBox<PhabricatorProject> myProjectComboBox;
-    private JBRadioButton myOnlyAssignedToMeButton;
+    private JBCheckBox myOnlyAssignedToMeButton;
 
     public RepositoryEditor(Project project, Repository repository, Consumer<Repository> changeListener) {
         super(project, repository, changeListener);
@@ -33,6 +34,7 @@ public class RepositoryEditor extends BaseRepositoryEditor<Repository> {
         myTestButton.setEnabled(myRepository.isConfigured());
 
         installListener(myProjectComboBox);
+        installListener(myOnlyAssignedToMeButton);
 
         UIUtil.invokeLaterIfNeeded(this::initialize);
     }
@@ -72,7 +74,7 @@ public class RepositoryEditor extends BaseRepositoryEditor<Repository> {
     @Nullable
     @Override
     protected JComponent createCustomPanel() {
-        myOnlyAssignedToMeButton = new JBRadioButton("Only tasks already assigned to me.", true);
+        myOnlyAssignedToMeButton = new JBCheckBox("Only tasks already assigned to me.", true);
         myProjectLabel = new JBLabel("Project:", SwingConstants.RIGHT);
         myProjectComboBox = new ComboBox<>(300);
         myProjectComboBox.setRenderer(SimpleListCellRenderer.create("Enter url and token first.", Object::toString));

@@ -21,7 +21,7 @@ public class PhabricatorCursor {
         this.limit = limit;
     }
 
-    public PhabricatorCursor(Integer limit, Order order, @Nullable String before, @Nullable String after) {
+    public PhabricatorCursor(Integer limit, @Nullable Order order, @Nullable String before, @Nullable String after) {
         assert limit == null || limit <= 100;
         this.limit = limit;
         this.order = order;

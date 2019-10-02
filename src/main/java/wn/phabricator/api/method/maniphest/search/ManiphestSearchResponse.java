@@ -20,6 +20,8 @@ public class ManiphestSearchResponse extends Response {
     @NotNull
     @Override
     protected List<String> validationErrors() {
+        super.validate();
+
         if (result == null) {
             return Collections.singletonList("null response");
         }
@@ -38,14 +40,14 @@ public class ManiphestSearchResponse extends Response {
 
     public static class Result {
         private List<PhabricatorIssue> data;
-        private PhabricatorCursor phabricatorCursor;
+        private PhabricatorCursor cursor;
 
         public List<PhabricatorIssue> getData() {
             return data;
         }
 
-        public PhabricatorCursor getPhabricatorCursor() {
-            return phabricatorCursor;
+        public PhabricatorCursor getCursor() {
+            return cursor;
         }
     }
 }
