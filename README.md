@@ -1,3 +1,7 @@
+# Developing
+If someone wish to contribute feel free to. There is basic docker-compose file with Phabricator. I created also some
+basic shell scripts to populate Phabricator with projects and tasks - checkout `/bin`
+
 # Building 
 To build plugin you need JDK, I tested it only with JDK 11. Java must be in PATH.
 If you have installed Java, just run this command:
