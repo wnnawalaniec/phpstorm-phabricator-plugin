@@ -20,6 +20,7 @@ dependencies {
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 intellij {
+    version 'IU-2019.2.1'
     plugins 'tasks'
 }
 patchPluginXml {
