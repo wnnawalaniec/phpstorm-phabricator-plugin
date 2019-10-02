@@ -11,7 +11,7 @@ import org.jetbrains.annotations.NotNull;
 import javax.swing.*;
 
 public class RepositoryType extends BaseRepositoryType<Repository> {
-    private static final Icon ICON = IconLoader.getIcon("/icon/phabricator_logo.svg");
+    public static final Icon ICON = IconLoader.getIcon("/icon/phabricator_logo.svg");
     @NotNull
     @Override
     public String getName() {

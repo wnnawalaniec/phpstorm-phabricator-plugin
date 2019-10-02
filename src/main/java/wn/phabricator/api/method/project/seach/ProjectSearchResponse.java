@@ -20,6 +20,8 @@ public class ProjectSearchResponse extends Response {
     @NotNull
     @Override
     protected List<String> validationErrors() {
+        super.validate();
+
         if (result == null) {
             return Collections.singletonList("null response");
         }

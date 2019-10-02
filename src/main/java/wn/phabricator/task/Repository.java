@@ -3,11 +3,13 @@ package wn.phabricator.task;
 import com.google.gson.Gson;
 import com.intellij.openapi.util.Comparing;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.tasks.CustomTaskState;
 import com.intellij.tasks.Task;
 import com.intellij.tasks.TaskRepositoryType;
 import com.intellij.tasks.impl.gson.TaskGsonUtil;
 import com.intellij.tasks.impl.httpclient.NewBaseRepositoryImpl;
 import com.intellij.tasks.impl.httpclient.TaskResponseUtil;
+import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import org.apache.http.HttpResponse;
@@ -20,15 +22,23 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import wn.phabricator.api.Method;
 import wn.phabricator.api.Response;
+import wn.phabricator.api.method.maniphest.edit.ManiphestEdit;
+import wn.phabricator.api.method.maniphest.edit.ManiphestEditResponse;
 import wn.phabricator.api.method.maniphest.search.ManiphestSearch;
+import wn.phabricator.api.method.maniphest.search.ManiphestSearchResponse;
+import wn.phabricator.api.method.maniphest.status.ManiphestStatusSearch;
+import wn.phabricator.api.method.maniphest.status.ManiphestStatusSearchResponse;
 import wn.phabricator.api.method.project.seach.ProjectSearch;
 import wn.phabricator.api.method.project.seach.ProjectSearchResponse;
-import wn.phabricator.api.model.PhabricatorProject;
+import wn.phabricator.api.method.user.whoami.UserWhoami;
+import wn.phabricator.api.method.user.whoami.UserWhoamiResponse;
+import wn.phabricator.api.model.*;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Tag("Phabricator")
@@ -36,9 +46,12 @@ public class Repository extends NewBaseRepositoryImpl {
     private static final String REST_API_PATH_PREFIX = "/api/";
     private static final Gson GSON = TaskGsonUtil.createDefaultBuilder().create();
 
+    private PhabricatorUser currentPhabricatorUser;
     private Boolean onlyAssigned;
     private PhabricatorProject currentPhabricatorProject;
     private List<PhabricatorProject> phabricatorProjects = new ArrayList<>();
+    private PhabricatorCursor currentCursor;
+    private List<PhabricatorStatus> phabricatorStatuses;
 
     /**
      * Serialization constructor
@@ -61,18 +74,24 @@ public class Repository extends NewBaseRepositoryImpl {
         super(other);
         this.currentPhabricatorProject = other.currentPhabricatorProject;
         this.onlyAssigned = other.onlyAssigned;
+        this.currentPhabricatorUser = other.currentPhabricatorUser;
     }
 
     @Nullable
     @Override
-    public Task findTask(@NotNull String id) {
-        Method method = ManiphestSearch.ByTaskId(id);
-        return null;
+    public Task findTask(@NotNull String id) throws IOException {
+        ManiphestSearchResponse response = callPhabricator(
+                ManiphestSearch.ByTaskId(id, currentPhabricatorProject),
+                ManiphestSearchResponse.class
+        );
+        List<PhabricatorIssue> result = response.getResult().getData();
+        return result.isEmpty() ? null : new PhabricatorTask(this, result.get(0), currentPhabricatorProject);
     }
 
     @Override
     public Task[] getIssues(@Nullable String query, int offset, int limit, boolean withClosed) throws Exception {
-        return new Task[]{};
+        final List<PhabricatorIssue> issues = fetchIssues(query, offset, limit, withClosed);
+        return ContainerUtil.map2Array(issues, PhabricatorTask.class, issue -> new PhabricatorTask(this, issue, currentPhabricatorProject));
     }
 
     @Nullable
@@ -103,7 +122,9 @@ public class Repository extends NewBaseRepositoryImpl {
     public boolean equals(Object o) {
         if (!super.equals(o)) return false;
         Repository repository = (Repository) o;
-        return Comparing.equal(currentPhabricatorProject, repository.currentPhabricatorProject);
+        return Comparing.equal(currentPhabricatorProject, repository.currentPhabricatorProject)
+                && Comparing.equal(onlyAssigned, repository.onlyAssigned)
+                && Comparing.equal(currentPhabricatorUser, repository.currentPhabricatorUser);
     }
 
     @Nullable
@@ -125,6 +146,15 @@ public class Repository extends NewBaseRepositoryImpl {
         this.onlyAssigned = onlyAssigned;
     }
 
+    @Nullable
+    public PhabricatorUser getCurrentPhabricatorUser() {
+        return currentPhabricatorUser;
+    }
+
+    public void setCurrentPhabricatorUser(@Nullable PhabricatorUser currentPhabricatorUser) {
+        this.currentPhabricatorUser = currentPhabricatorUser;
+    }
+
     public List<PhabricatorProject> fetchProjects() throws IOException {
         ProjectSearchResponse response = callPhabricator(ProjectSearch.AllActiveProjects(null), ProjectSearchResponse.class);
         phabricatorProjects.addAll(response.getResult().getData());
@@ -135,6 +165,78 @@ public class Repository extends NewBaseRepositoryImpl {
         }
 
         return phabricatorProjects;
+    }
+
+    @Override
+    public boolean isSupported(int feature) {
+        if (feature == STATE_UPDATING) {
+            return true;
+        }
+
+        return super.isSupported(feature);
+    }
+
+    public List<PhabricatorIssue> fetchIssues(String query, int offset, int limit, boolean withClosed) throws IOException {
+        limit = Math.min(limit, 100);
+
+        if (currentCursor == null) {
+            currentCursor = new PhabricatorCursor(limit);
+        } else {
+            currentCursor.setLimit(limit);
+        }
+
+        ManiphestSearch method;
+        if (onlyAssigned) {
+            ensureUserIsObtained();
+            method = ManiphestSearch.ByProjectAndOwner(currentPhabricatorProject, currentPhabricatorUser, !withClosed, query, currentCursor);
+        } else {
+            method = ManiphestSearch.ByProject(currentPhabricatorProject, !withClosed, query, currentCursor);
+        }
+        ManiphestSearchResponse response = callPhabricator(
+                method,
+                ManiphestSearchResponse.class
+        );
+
+        currentCursor = response.getResult().getCursor();
+        return response.getResult().getData();
+    }
+
+    @NotNull
+    @Override
+    public Set<CustomTaskState> getAvailableTaskStates(@NotNull Task task) throws Exception {
+        ensureStatusesAreObtained();
+        return phabricatorStatuses.stream()
+                .map(s -> new CustomTaskState(s.getValue(), s.getName()))
+                .collect(Collectors.toSet());
+    }
+
+    @Override
+    public void setTaskState(@NotNull Task task, @NotNull CustomTaskState state) throws Exception {
+        callPhabricator(ManiphestEdit.ChangeStatus(task.getId(), state.getId()), ManiphestEditResponse.class);
+    }
+
+    public Boolean isClosed(@NotNull String statusValue) {
+        try {
+            ensureStatusesAreObtained();
+            return phabricatorStatuses.stream()
+                    .anyMatch(s -> s.getValue().equals(statusValue) && s.isClosed());
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private void ensureStatusesAreObtained() throws IOException {
+        if (phabricatorStatuses == null) {
+            ManiphestStatusSearchResponse response = callPhabricator(ManiphestStatusSearch.Search(), ManiphestStatusSearchResponse.class);
+            phabricatorStatuses = response.getPhabricatorStatuses();
+        }
+    }
+
+    private void ensureUserIsObtained() throws IOException {
+        if (currentPhabricatorUser == null) {
+            UserWhoamiResponse response = callPhabricator(UserWhoami.whoami(), UserWhoamiResponse.class);
+            currentPhabricatorUser = response.getPhabricatorUser();
+        }
     }
 
     private <T extends Response> T callPhabricator(@NotNull Method method, Class<T> responseClass) throws IOException {
