@@ -4,7 +4,7 @@
     <vendor email="wnnawalaniec@gmail.com">Wojciech Nawalaniec</vendor>
 
     <description><![CDATA[
-    Simple widget for working with Phabricator.
+    This plugins add Phabricator as Task sever so it can by used with Task manager.
     ]]></description>
 
     <extensions defaultExtensionNs="com.intellij">
