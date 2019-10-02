@@ -1,6 +1,6 @@
 package wn.phabricator.api.method.user.whoami;
 
-import javafx.util.Pair;
+import com.intellij.openapi.util.Pair;
 import wn.phabricator.api.method.BaseMethod;
 
 import java.util.ArrayList;

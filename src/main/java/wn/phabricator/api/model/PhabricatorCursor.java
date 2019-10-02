@@ -1,6 +1,6 @@
 package wn.phabricator.api.model;
 
-import javafx.util.Pair;
+import com.intellij.openapi.util.Pair;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;

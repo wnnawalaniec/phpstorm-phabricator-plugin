@@ -1,14 +1,14 @@
 package wn.phabricator.api;
 
-import javafx.util.Pair;
+import com.intellij.openapi.util.Pair;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
 public interface Method {
     @NotNull
-    public String name();
+    String name();
 
     @NotNull
-    public List<Pair<String, String>> params();
+    List<Pair<String, String>> params();
 }

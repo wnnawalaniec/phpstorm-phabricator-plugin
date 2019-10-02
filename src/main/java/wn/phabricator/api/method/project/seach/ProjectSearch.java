@@ -1,6 +1,6 @@
 package wn.phabricator.api.method.project.seach;
 
-import javafx.util.Pair;
+import com.intellij.openapi.util.Pair;
 import org.jetbrains.annotations.Nullable;
 import wn.phabricator.api.method.BaseMethod;
 import wn.phabricator.api.model.PhabricatorCursor;
