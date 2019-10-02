@@ -1,11 +1,9 @@
 package wn.phabricator.api.method;
 
-import javafx.util.Pair;
+import com.intellij.openapi.util.Pair;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import wn.phabricator.api.Method;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**

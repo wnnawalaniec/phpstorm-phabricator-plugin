@@ -270,7 +270,7 @@ public class Repository extends NewBaseRepositoryImpl {
     private List<NameValuePair> convertParamsToNameValuePair(@NotNull Method method) {
         return method.params()
                 .stream()
-                .map(pair -> new BasicNameValuePair(pair.getKey(), pair.getValue()))
+                .map(pair -> new BasicNameValuePair(pair.first, pair.second))
                 .collect(Collectors.toList());
     }
 }
