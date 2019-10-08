@@ -19,7 +19,7 @@ public abstract class Response {
         return errorInfo;
     }
 
-    public void validate() {
+    public void validate() throws RequestFailedException {
         if (StringUtil.isNotEmpty(errorInfo)) {
             throw new RequestFailedException(errorInfo);
         }

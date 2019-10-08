@@ -23,4 +23,12 @@ public class ManiphestEdit extends BaseMethod {
         params.add(new Pair<>("transactions[0][value]", statusValue));
         return new ManiphestEdit(NAME, params);
     }
+
+    public static ManiphestEdit ChangeColumn(@NotNull String taskPhid, @NotNull String columnPhid) {
+        ArrayList<Pair<String, String>> params = new ArrayList<>();
+        params.add(new Pair<>("objectIdentifier", taskPhid));
+        params.add(new Pair<>("transactions[0][type]", "column"));
+        params.add(new Pair<>("transactions[0][value][0]", columnPhid));
+        return new ManiphestEdit(NAME, params);
+    }
 }
