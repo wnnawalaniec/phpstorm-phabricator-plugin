@@ -1,13 +1,10 @@
 package wn.phabricator.api.method.user.whoami;
 
 import com.google.gson.annotations.SerializedName;
+import com.intellij.tasks.impl.RequestFailedException;
 import org.jetbrains.annotations.NotNull;
 import wn.phabricator.api.Response;
 import wn.phabricator.api.model.PhabricatorUser;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 public class UserWhoamiResponse extends Response {
     @SerializedName("result")
@@ -18,15 +15,12 @@ public class UserWhoamiResponse extends Response {
         return phabricatorUser;
     }
 
-    @NotNull
     @Override
-    protected List<String> validationErrors() {
+    public void validate() {
         super.validate();
 
         if (phabricatorUser == null) {
-            return Collections.singletonList("null result given");
+            throw new RequestFailedException("null result given");
         }
-
-        return new ArrayList<>();
     }
 }

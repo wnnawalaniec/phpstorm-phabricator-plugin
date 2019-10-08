@@ -1,17 +1,14 @@
-package wn.phabricator.api.method.maniphest.search;
+package wn.phabricator.api.method.project.column;
 
 import com.intellij.tasks.impl.RequestFailedException;
-import org.jetbrains.annotations.NotNull;
 import wn.phabricator.api.Response;
-import wn.phabricator.api.model.PhabricatorCursor;
-import wn.phabricator.api.model.PhabricatorIssue;
+import wn.phabricator.api.model.PhabricatorColumn;
 
 import java.util.List;
 
-public class ManiphestSearchResponse extends Response {
+public class ProjectColumnSearchResponse extends Response {
     private Result result;
 
-    @NotNull
     public Result getResult() {
         return result;
     }
@@ -30,15 +27,10 @@ public class ManiphestSearchResponse extends Response {
     }
 
     public static class Result {
-        private List<PhabricatorIssue> data;
-        private PhabricatorCursor cursor;
+        private List<PhabricatorColumn> data;
 
-        public List<PhabricatorIssue> getData() {
+        public List<PhabricatorColumn> getData() {
             return data;
-        }
-
-        public PhabricatorCursor getCursor() {
-            return cursor;
         }
     }
 }

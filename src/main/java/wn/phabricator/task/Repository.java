@@ -28,6 +28,8 @@ import wn.phabricator.api.method.maniphest.search.ManiphestSearch;
 import wn.phabricator.api.method.maniphest.search.ManiphestSearchResponse;
 import wn.phabricator.api.method.maniphest.status.ManiphestStatusSearch;
 import wn.phabricator.api.method.maniphest.status.ManiphestStatusSearchResponse;
+import wn.phabricator.api.method.project.column.ProjectColumnSearch;
+import wn.phabricator.api.method.project.column.ProjectColumnSearchResponse;
 import wn.phabricator.api.method.project.seach.ProjectSearch;
 import wn.phabricator.api.method.project.seach.ProjectSearchResponse;
 import wn.phabricator.api.method.user.whoami.UserWhoami;
@@ -52,6 +54,7 @@ public class Repository extends NewBaseRepositoryImpl {
     private List<PhabricatorProject> phabricatorProjects = new ArrayList<>();
     private PhabricatorCursor currentCursor;
     private List<PhabricatorStatus> phabricatorStatuses;
+    private List<PhabricatorColumn> phabricatorColumns;
 
     /**
      * Serialization constructor
@@ -94,37 +97,145 @@ public class Repository extends NewBaseRepositoryImpl {
         return ContainerUtil.map2Array(issues, PhabricatorTask.class, issue -> new PhabricatorTask(this, issue, currentPhabricatorProject));
     }
 
+    @Override
+    public boolean isConfigured() {
+        return super.isConfigured() && StringUtil.isNotEmpty(myPassword);
+    }
+
+    @Override
+    public boolean isSupported(int feature) {
+        if (feature == STATE_UPDATING) {
+            return true;
+        }
+
+        return super.isSupported(feature);
+    }
+
+    @NotNull
+    public Boolean isClosed(@NotNull String statusValue) {
+        try {
+            ensureStatusesAreObtained();
+            return phabricatorStatuses.stream()
+                    .anyMatch(s -> s.getValue().equals(statusValue) && s.isClosed());
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     @Nullable
     @Override
     public CancellableConnection createCancellableConnection() {
         return new HttpTestConnection(methodToRequest(ProjectSearch.AllActiveProjects(null)));
     }
 
+    public List<PhabricatorProject> fetchProjects() throws IOException {
+        ProjectSearchResponse response = callPhabricator(ProjectSearch.AllActiveProjects(null), ProjectSearchResponse.class);
+
+        phabricatorProjects.addAll(response.getResult().getData());
+
+        while (response.getResult().getCursor().hasNextPage()) {
+            response = callPhabricator(ProjectSearch.AllActiveProjects(response.getResult().getCursor()), ProjectSearchResponse.class);
+            phabricatorProjects.addAll(response.getResult().getData());
+        }
+
+        return phabricatorProjects;
+    }
+
+    private List<PhabricatorIssue> fetchIssues(String query, int offset, int limit, boolean withClosed) throws IOException {
+        limit = Math.min(limit, 100);
+
+        if (currentCursor == null) {
+            currentCursor = new PhabricatorCursor(limit);
+        } else {
+            currentCursor.setLimit(limit);
+        }
+
+        ManiphestSearch method;
+        if (onlyAssigned) {
+            ensureUserIsObtained();
+            method = ManiphestSearch.ByProjectAndOwner(currentPhabricatorProject, currentPhabricatorUser, !withClosed, query, currentCursor);
+        } else {
+            method = ManiphestSearch.ByProject(currentPhabricatorProject, !withClosed, query, currentCursor);
+        }
+        ManiphestSearchResponse response = callPhabricator(
+                method,
+                ManiphestSearchResponse.class
+        );
+
+        currentCursor = response.getResult().getCursor();
+        return response.getResult().getData();
+    }
+
+    private List<PhabricatorColumn> fetchColumns() throws IOException {
+        ProjectColumnSearchResponse response = callPhabricator(
+                ProjectColumnSearch.ByProject(this.currentPhabricatorProject),
+                ProjectColumnSearchResponse.class
+        );
+
+        return response.getResult().getData();
+    }
+
+    private void ensureStatusesAreObtained() throws IOException {
+        if (phabricatorStatuses == null) {
+            ManiphestStatusSearchResponse response = callPhabricator(ManiphestStatusSearch.Search(), ManiphestStatusSearchResponse.class);
+            phabricatorStatuses = response.getPhabricatorStatuses();
+        }
+    }
+
+    private void ensureUserIsObtained() throws IOException {
+        if (currentPhabricatorUser == null) {
+            UserWhoamiResponse response = callPhabricator(UserWhoami.whoami(), UserWhoamiResponse.class);
+            currentPhabricatorUser = response.getPhabricatorUser();
+        }
+    }
+
+    private void ensureColumnsAreObtained() throws IOException {
+        if (phabricatorColumns == null) {
+            phabricatorColumns = fetchColumns();
+        }
+    }
+
+    private <T extends Response> T callPhabricator(@NotNull Method method, Class<T> responseClass) throws IOException {
+        HttpPost post = methodToRequest(method);
+        HttpResponse response = getHttpClient().execute(post);
+        T deserializedResponse = deserialize(response, responseClass);
+        deserializedResponse.validate();
+        return deserializedResponse;
+    }
+
+    @NotNull
+    private HttpPost methodToRequest(@NotNull Method method) {
+        HttpPost post = new HttpPost(getRestApiUrl(method.name()));
+
+        List<NameValuePair> params = convertParamsToNameValuePair(method);
+        params.add(new BasicNameValuePair("api.token", myPassword));
+
+        try {
+            post.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
+        } catch (UnsupportedEncodingException e) {
+            //
+        }
+
+        return post;
+    }
+
+    private <T extends Response> T deserialize(HttpResponse response, Class<T> responseClass) throws IOException {
+        TaskResponseUtil.GsonSingleObjectDeserializer<T> responseHandler =
+                new TaskResponseUtil.GsonSingleObjectDeserializer<>(GSON, responseClass);
+        return responseHandler.handleResponse(response);
+    }
+
+    private List<NameValuePair> convertParamsToNameValuePair(@NotNull Method method) {
+        return method.params()
+                .stream()
+                .map(pair -> new BasicNameValuePair(pair.first, pair.second))
+                .collect(Collectors.toList());
+    }
+
     @NotNull
     @Override
     public String getRestApiPathPrefix() {
         return REST_API_PATH_PREFIX;
-    }
-
-    @Override
-    public boolean isConfigured() {
-        return super.isConfigured() && StringUtil.isNotEmpty(myPassword);
-    }
-
-    @NotNull
-    @Override
-    public Repository clone() {
-        return new Repository(this);
-    }
-
-    @Contract(value = "null -> false", pure = true)
-    @Override
-    public boolean equals(Object o) {
-        if (!super.equals(o)) return false;
-        Repository repository = (Repository) o;
-        return Comparing.equal(currentPhabricatorProject, repository.currentPhabricatorProject)
-                && Comparing.equal(onlyAssigned, repository.onlyAssigned)
-                && Comparing.equal(currentPhabricatorUser, repository.currentPhabricatorUser);
     }
 
     @Nullable
@@ -155,52 +266,6 @@ public class Repository extends NewBaseRepositoryImpl {
         this.currentPhabricatorUser = currentPhabricatorUser;
     }
 
-    public List<PhabricatorProject> fetchProjects() throws IOException {
-        ProjectSearchResponse response = callPhabricator(ProjectSearch.AllActiveProjects(null), ProjectSearchResponse.class);
-        phabricatorProjects.addAll(response.getResult().getData());
-
-        while (response.getResult().getCursor().hasNextPage()) {
-            response = callPhabricator(ProjectSearch.AllActiveProjects(response.getResult().getCursor()), ProjectSearchResponse.class);
-            phabricatorProjects.addAll(response.getResult().getData());
-        }
-
-        return phabricatorProjects;
-    }
-
-    @Override
-    public boolean isSupported(int feature) {
-        if (feature == STATE_UPDATING) {
-            return true;
-        }
-
-        return super.isSupported(feature);
-    }
-
-    public List<PhabricatorIssue> fetchIssues(String query, int offset, int limit, boolean withClosed) throws IOException {
-        limit = Math.min(limit, 100);
-
-        if (currentCursor == null) {
-            currentCursor = new PhabricatorCursor(limit);
-        } else {
-            currentCursor.setLimit(limit);
-        }
-
-        ManiphestSearch method;
-        if (onlyAssigned) {
-            ensureUserIsObtained();
-            method = ManiphestSearch.ByProjectAndOwner(currentPhabricatorProject, currentPhabricatorUser, !withClosed, query, currentCursor);
-        } else {
-            method = ManiphestSearch.ByProject(currentPhabricatorProject, !withClosed, query, currentCursor);
-        }
-        ManiphestSearchResponse response = callPhabricator(
-                method,
-                ManiphestSearchResponse.class
-        );
-
-        currentCursor = response.getResult().getCursor();
-        return response.getResult().getData();
-    }
-
     @NotNull
     @Override
     public Set<CustomTaskState> getAvailableTaskStates(@NotNull Task task) throws Exception {
@@ -215,62 +280,28 @@ public class Repository extends NewBaseRepositoryImpl {
         callPhabricator(ManiphestEdit.ChangeStatus(task.getId(), state.getId()), ManiphestEditResponse.class);
     }
 
-    public Boolean isClosed(@NotNull String statusValue) {
-        try {
-            ensureStatusesAreObtained();
-            return phabricatorStatuses.stream()
-                    .anyMatch(s -> s.getValue().equals(statusValue) && s.isClosed());
-        } catch (IOException e) {
-            return false;
-        }
+    public void setTaskColumn(@NotNull Task task, @NotNull PhabricatorColumn column) throws IOException {
+        callPhabricator(ManiphestEdit.ChangeColumn(task.getId(), column.getPhid()), ManiphestEditResponse.class);
     }
 
-    private void ensureStatusesAreObtained() throws IOException {
-        if (phabricatorStatuses == null) {
-            ManiphestStatusSearchResponse response = callPhabricator(ManiphestStatusSearch.Search(), ManiphestStatusSearchResponse.class);
-            phabricatorStatuses = response.getPhabricatorStatuses();
-        }
-    }
-
-    private void ensureUserIsObtained() throws IOException {
-        if (currentPhabricatorUser == null) {
-            UserWhoamiResponse response = callPhabricator(UserWhoami.whoami(), UserWhoamiResponse.class);
-            currentPhabricatorUser = response.getPhabricatorUser();
-        }
-    }
-
-    private <T extends Response> T callPhabricator(@NotNull Method method, Class<T> responseClass) throws IOException {
-        HttpPost post = methodToRequest(method);
-        HttpResponse response = getHttpClient().execute(post);
-        return deserialize(response, responseClass);
+    public List<PhabricatorColumn> getPhabricatorColumns() throws IOException {
+        ensureColumnsAreObtained();
+        return phabricatorColumns;
     }
 
     @NotNull
-    private HttpPost methodToRequest(@NotNull Method method) {
-        HttpPost post = new HttpPost(getRestApiUrl(method.name()));
-
-        List<NameValuePair> params = convertParamsToNameValuePair(method);
-        params.add(new BasicNameValuePair("api.token", myPassword));
-
-        try {
-            post.setEntity(new UrlEncodedFormEntity(params, "UTF-8"));
-        } catch (UnsupportedEncodingException e) {
-            //
-        }
-
-        return post;
+    @Override
+    public Repository clone() {
+        return new Repository(this);
     }
 
-    private <T extends Response> T deserialize(HttpResponse response, Class<T> responseClass) throws IOException {
-        TaskResponseUtil.GsonSingleObjectDeserializer<T> responseHandler =
-                new TaskResponseUtil.GsonSingleObjectDeserializer<>(GSON, responseClass);
-        return responseHandler.handleResponse(response);
-    }
-
-    private List<NameValuePair> convertParamsToNameValuePair(@NotNull Method method) {
-        return method.params()
-                .stream()
-                .map(pair -> new BasicNameValuePair(pair.first, pair.second))
-                .collect(Collectors.toList());
+    @Contract(value = "null -> false", pure = true)
+    @Override
+    public boolean equals(Object o) {
+        if (!super.equals(o)) return false;
+        Repository repository = (Repository) o;
+        return Comparing.equal(currentPhabricatorProject, repository.currentPhabricatorProject)
+                && Comparing.equal(onlyAssigned, repository.onlyAssigned)
+                && Comparing.equal(currentPhabricatorUser, repository.currentPhabricatorUser);
     }
 }
