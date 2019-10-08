@@ -25,11 +25,11 @@ build_snapshot:
   variables:
     SNAPSHOT_VERSION: "SNAPSHOT_${CI_PIPELINE_ID}+${CI_COMMIT_SHORT_SHA}"
   script:
-    - "./gradlew -Pversion=${SNAPSHOT_VERSION} :buildPlugin"
+    - "./gradlew :buildPlugin"
   artifacts:
     name: "phabricator-pluigin-${SNAPSHOT_VERSION}"
     paths:
-      - "phabricator-plugin"
+      - "build/distributions/*.zip"
     expire_in: 3 months
 
 build_tag:
@@ -37,9 +37,9 @@ build_tag:
   only:
     - tags
   script:
-    - "./gradlew -Pversion=${CI_COMMIT_TAG} :buildPlugin"
+    - "./gradlew :buildPlugin"
   artifacts:
     name: "phabricator-plugin-${CI_COMMIT_TAG}"
     expire_in: 1 year
     paths:
-      - "phabricator-plugin"
+      - "build/distributions/*.zip"
