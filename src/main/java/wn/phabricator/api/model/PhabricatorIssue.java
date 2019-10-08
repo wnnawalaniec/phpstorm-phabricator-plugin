@@ -1,6 +1,5 @@
 package wn.phabricator.api.model;
 
-import java.util.Collection;
 import java.util.Date;
 
 public class PhabricatorIssue {
@@ -34,10 +33,6 @@ public class PhabricatorIssue {
 
     public Date getDateModified() {
         return fields.dateModified;
-    }
-
-    public Collection<? extends String> validate() {
-        return null;
     }
 
     public static class Fields {

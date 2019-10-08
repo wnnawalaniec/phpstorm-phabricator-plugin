@@ -1,11 +1,10 @@
 package wn.phabricator.api.method.maniphest.status;
 
+import com.intellij.tasks.impl.RequestFailedException;
 import org.jetbrains.annotations.NotNull;
 import wn.phabricator.api.Response;
 import wn.phabricator.api.model.PhabricatorStatus;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class ManiphestStatusSearchResponse extends Response {
@@ -16,20 +15,17 @@ public class ManiphestStatusSearchResponse extends Response {
         return result.data;
     }
 
-    @NotNull
     @Override
-    protected List<String> validationErrors() {
+    public void validate() {
         super.validate();
 
         if (result == null) {
-            return Collections.singletonList("null response");
+            throw new RequestFailedException("null response");
         }
 
         if (result.data == null) {
-            return Collections.singletonList("null response data");
+            throw new RequestFailedException("null response data");
         }
-
-        return new ArrayList<>();
     }
 
     static public class Result {

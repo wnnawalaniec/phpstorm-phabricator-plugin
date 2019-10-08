@@ -4,10 +4,6 @@ import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
 @SuppressWarnings("unused")
 @Tag("PhabricatorProject")
 public class PhabricatorProject {
@@ -60,32 +56,6 @@ public class PhabricatorProject {
         }
 
         fields.description = description;
-    }
-
-    public Collection<? extends String> validate()
-    {
-        List<String> errors = new ArrayList<>();
-        if (id < 1) {
-            errors.add("Invalid id given");
-        }
-
-        if (phid == null || phid.isEmpty()) {
-            errors.add("PhId must be given and not empty");
-        }
-
-        if (fields == null) {
-            errors.add("Fields must be given");
-        } else {
-            if (fields.name == null || fields.name.isEmpty()) {
-                errors.add("Name must be given, and cannot be empty");
-            }
-
-            if (fields.description == null) {
-                errors.add("Description must be given");
-            }
-        }
-
-        return errors;
     }
 
     @Override
